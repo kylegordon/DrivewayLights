@@ -1,0 +1,1 @@
+/usr/share/arduino/libraries/Ports/PortsSHT11.h
