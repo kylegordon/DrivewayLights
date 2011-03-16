@@ -1,0 +1,6 @@
+Driveway Lights Project
+=======================
+
+This uses JeeNode ID2, and a Dimmer plug. The dimmer plug is connected to a series of 2N7000 MOSFETS, and directly controls 3 12V LED lights on the house wall.
+
+
