@@ -1,3 +1,4 @@
+// vi:tabstop=2:expandtab
 /*
 	 Control outdoor lights with PWM fading.
 
