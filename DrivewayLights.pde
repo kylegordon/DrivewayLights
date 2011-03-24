@@ -35,7 +35,6 @@ int loopdelay = 10;
 
 // set pin numbers:
 int buttonPin = 6;   // choose the input pin (for a pushbutton)
-int buttonLED = 7;    // The output LED to indicate the state of the button
 
 long previousMillis = 0;	  // last update time
 long elapsedMillis = 0;	   // elapsed time
@@ -125,7 +124,6 @@ void setup() {
         rf12_easyInit(0);
 
         pinMode(buttonPin, INPUT);    // declare pushbutton as input
-        pinMode(buttonLED, OUTPUT);   // declare button LED pin as output
 
         //FrontTargetPower = 255;
         //MidTargetPower = 255;
@@ -150,113 +148,108 @@ void loop() {
         // 'fullpower' is when we're at full power
         // 'dimming' is when we're ramping up or down
 
-        //if (dimming == false) {
-                // If all the target values have been reached, start a timer if they're not 0 
-                // (in order to turn off eventually), or just sit and do nothing
-                if (FrontPower == FrontTargetPower && MidPower == MidTargetPower && RearPower == RearTargetPower) {
-                        // All lights are at their target values
-                        // Start the count down
-                        if (timestored == 0) {
-                                timestored = 1;
-                                storedMillis = currentMillis;
-                                if (DEBUG) { Serial.print("Storing time : "); Serial.println(currentMillis); }
-                        }
-                        if (timestored == 1) {
-                                elapsedMillis = currentMillis - storedMillis;
-                                // When we reach the timeout, start turning off
-                                if (elapsedMillis > offtimeout) { 
-                                        dimming = 1;
-                                        FrontTargetPower = 0;
-                                        MidTargetPower = 0;
-                                        RearTargetPower = 0;
-                                }
-                                if (DEBUG) { Serial.print("Static elapsed time : "); Serial.println(elapsedMillis); }
-                        }
-
-                } else {
-                        // Everything is off
-                        timestored = 0;
-                        storedMillis = 0;
-                        elapsedMillis = 0;
+        // If all the target values have been reached, start a timer if they're not 0 
+        // (in order to turn off eventually), or just sit and do nothing
+        if (FrontPower == FrontTargetPower && MidPower == MidTargetPower && RearPower == RearTargetPower) {
+                // All lights are at their target values
+                // Start the count down
+                if (timestored == 0) {
+                        timestored = 1;
+                        storedMillis = currentMillis;
+                        if (DEBUG) { Serial.print("Storing time : "); Serial.println(currentMillis); }
                 }
-        //}
-
-        //if (dimming == true) {
-                // We're dimming, so we have to complete the ramping process
-                if (FrontPower != FrontTargetPower || MidPower != MidTargetPower || RearPower != RearTargetPower) {
-                        if (timestored == 0) {
-                                timestored = 1;
-                                storedMillis = currentMillis;
-                                if (DEBUG) { Serial.print("Storing time : "); Serial.println(currentMillis); }
+                if (timestored == 1) {
+                        elapsedMillis = currentMillis - storedMillis;
+                        // When we reach the timeout, start turning off
+                        if (elapsedMillis > offtimeout) { 
+                                dimming = 1;
+                                FrontTargetPower = 0;
+                                MidTargetPower = 0;
+                                RearTargetPower = 0;
                         }
-                        if (timestored == 1) {
-                                elapsedMillis = currentMillis - storedMillis;
-                                if (DEBUG) { Serial.print("Dimming elapsed time : "); Serial.println(elapsedMillis); }
-                        }
-
-                        dimming = 1;
-                        Serial.print("Targets are : ");
-                        Serial.print(FrontTargetPower);
-                        Serial.print(":");
-                        Serial.print(MidTargetPower);
-                        Serial.print(":");
-                        Serial.println(RearTargetPower);
-
-
-                        /*Serial.print("Pre-adjustment values are : ");
-                          Serial.print(FrontPower);
-                          Serial.print(":");
-                          Serial.print(MidPower);
-                          Serial.print(":");
-                          Serial.println(RearPower);
-                         */
-
-                        // FIXME - this will decrement and then increment. Needs a way to skip it
-                        if (FrontPower > FrontTargetPower) { 
-                                FrontPower = FrontPower / FrontDecrement;                                         // Decrement value
-                                if (FrontPower < FrontTargetPower || FrontPower < 1) { FrontPower = FrontTargetPower;}   // Fix overshoot
-                        }
-                        if (FrontPower < FrontTargetPower) { 
-                                FrontPower = FrontPower * FrontIncrement;                                         // Increment value
-                                if (FrontPower > FrontTargetPower) { FrontPower = FrontTargetPower;}    // Fix overshoot
-                        }
-                        if (MidPower > MidTargetPower) { 
-                                MidPower = MidPower / MidDecrement;
-                                if (MidPower < MidTargetPower || MidPower < 1) { MidPower = MidTargetPower;}
-                        }
-                        if (MidPower < MidTargetPower) { 
-                                MidPower = MidPower * MidIncrement;
-                                if (MidPower > MidTargetPower) { MidPower = MidTargetPower;}
-                        }
-                        if (RearPower > RearTargetPower) { 
-                                RearPower = RearPower / RearDecrement;
-                                if (RearPower < RearTargetPower || RearPower < 1) { RearPower = RearTargetPower;}
-                        }
-                        if (RearPower < RearTargetPower) { 
-                                RearPower = RearPower * RearIncrement;
-                                if (RearPower > RearTargetPower) { RearPower = RearTargetPower;}
-                        }
-
-                        Serial.print("Post-adjustment values are : ");
-                        Serial.print(FrontPower);
-                        Serial.print(":");                              
-                        Serial.print(MidPower);
-                        Serial.print(":");                                                                              
-                        Serial.println(RearPower);
-
-
-                        int val = 100;
-                        rf12_easyPoll();
-                        rf12_easySend(&val, sizeof val);
-                        rf12_easyPoll();
-
-                } else {
-                        // We appear to have reached our targets. we no longer need to ramp
-                        dimming = false;
-                        if (DEBUG) {Serial.println("Constant state"); }
+                        if (DEBUG) { Serial.print("Static elapsed time : "); Serial.println(elapsedMillis); }
                 }
 
-        //}
+        } else {
+                // Everything is off
+                timestored = 0;
+                storedMillis = 0;
+                elapsedMillis = 0;
+        }
+
+        if (FrontPower != FrontTargetPower || MidPower != MidTargetPower || RearPower != RearTargetPower) {
+                if (timestored == 0) {
+                        timestored = 1;
+                        storedMillis = currentMillis;
+                        if (DEBUG) { Serial.print("Storing time : "); Serial.println(currentMillis); }
+                }
+                if (timestored == 1) {
+                        elapsedMillis = currentMillis - storedMillis;
+                        if (DEBUG) { Serial.print("Dimming elapsed time : "); Serial.println(elapsedMillis); }
+                }
+
+                dimming = 1;
+                Serial.print("Targets are : ");
+                Serial.print(FrontTargetPower);
+                Serial.print(":");
+                Serial.print(MidTargetPower);
+                Serial.print(":");
+                Serial.println(RearTargetPower);
+
+
+                /*Serial.print("Pre-adjustment values are : ");
+                  Serial.print(FrontPower);
+                  Serial.print(":");
+                  Serial.print(MidPower);
+                  Serial.print(":");
+                  Serial.println(RearPower);
+                 */
+
+                // FIXME - this will decrement and then increment. Needs a way to skip it
+                if (FrontPower > FrontTargetPower) { 
+                        FrontPower = FrontPower / FrontDecrement;                                         // Decrement value
+                        if (FrontPower < FrontTargetPower || FrontPower < 1) { FrontPower = FrontTargetPower;}   // Fix overshoot
+                }
+                if (FrontPower < FrontTargetPower) { 
+                        FrontPower = FrontPower * FrontIncrement;                                         // Increment value
+                        if (FrontPower > FrontTargetPower) { FrontPower = FrontTargetPower;}    // Fix overshoot
+                }
+                if (MidPower > MidTargetPower) { 
+                        MidPower = MidPower / MidDecrement;
+                        if (MidPower < MidTargetPower || MidPower < 1) { MidPower = MidTargetPower;}
+                }
+                if (MidPower < MidTargetPower) { 
+                        MidPower = MidPower * MidIncrement;
+                        if (MidPower > MidTargetPower) { MidPower = MidTargetPower;}
+                }
+                if (RearPower > RearTargetPower) { 
+                        RearPower = RearPower / RearDecrement;
+                        if (RearPower < RearTargetPower || RearPower < 1) { RearPower = RearTargetPower;}
+                }
+                if (RearPower < RearTargetPower) { 
+                        RearPower = RearPower * RearIncrement;
+                        if (RearPower > RearTargetPower) { RearPower = RearTargetPower;}
+                }
+
+                Serial.print("Post-adjustment values are : ");
+                Serial.print(FrontPower);
+                Serial.print(":");                              
+                Serial.print(MidPower);
+                Serial.print(":");                                                                              
+                Serial.println(RearPower);
+
+
+                int val = 100;
+                rf12_easyPoll();
+                rf12_easySend(&val, sizeof val);
+                rf12_easyPoll();
+
+        } else {
+                // We appear to have reached our targets. we no longer need to ramp
+                dimming = false;
+                if (DEBUG) {Serial.println("Constant state"); }
+        }
+
 
         if (buttonState == 1) {
                 // What do we do when the button is pressed?
