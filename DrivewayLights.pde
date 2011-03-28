@@ -31,7 +31,7 @@ http://lodge.glasgownet.com
 ISR(WDT_vect) { Sleepy::watchdogEvent(); }
 
 boolean DEBUG = 0;
-int loopdelay = 10;
+int loopdelay = 0;
 
 // set pin numbers:
 int buttonPin = 6;   // choose the input pin (for a pushbutton)
@@ -53,12 +53,12 @@ float FrontPower = 0;
 float MidPower = 0;
 float RearPower = 0;
 
-float FrontIncrement = 1.06;
-float MidIncrement = 1.04;
-float RearIncrement = 1.03;
-float FrontDecrement = 1.02;
-float MidDecrement = 1.035;
-float RearDecrement = 1.06;
+float FrontIncrement = 1.02;
+float MidIncrement = 1.015;
+float RearIncrement = 1.01;
+float FrontDecrement = 1.015;
+float MidDecrement = 1.02;
+float RearDecrement = 1.03;
 
 int offtimeout = 10000;    // Number of milliseconds to stay on for after being turned on
 
@@ -143,9 +143,26 @@ void loop() {
         unsigned long currentMillis = millis(); 		// Grab the current time
         buttonState = digitalRead(buttonPin);
         // buttonState = 1;
-        if (DEBUG) { Serial.print("Button : "); Serial.println(0 + buttonState); }
+        if (DEBUG) { Serial.print("Button : "); Serial.println(0 + buttonState);}
+        if (buttonState == 1) {
+                // What do we do when the button is pressed?
+                // It doesn't matter what we're doing. The target values should be set back to 255
+                dimming = 1;
+                storedMillis = 0;
+                elapsedMillis = 0;
+                // Set the target values
+                FrontTargetPower = 255;
+                MidTargetPower = 255;
+                RearTargetPower = 255;
+                // Set the initial values (cos we can't multiply 0 by anything...)
+                if (!FrontPower && !MidPower && !RearPower) {
+                        FrontPower = 1;
+                        MidPower = 1;
+                        RearPower = 1;
+                }
+        }
 
-        // 'fullpower' is when we're at full power
+
         // 'dimming' is when we're ramping up or down
 
         // If all the target values have been reached, start a timer if they're not 0 
@@ -171,12 +188,13 @@ void loop() {
                 }
 
         } else {
-                // Everything is off
+                // Everything is fine
                 timestored = 0;
                 storedMillis = 0;
                 elapsedMillis = 0;
         }
 
+        // If we're not at our defined levels, do somethign about it.
         if (FrontPower != FrontTargetPower || MidPower != MidTargetPower || RearPower != RearTargetPower) {
                 if (timestored == 0) {
                         timestored = 1;
@@ -189,21 +207,14 @@ void loop() {
                 }
 
                 dimming = 1;
-                Serial.print("Targets are : ");
-                Serial.print(FrontTargetPower);
-                Serial.print(":");
-                Serial.print(MidTargetPower);
-                Serial.print(":");
-                Serial.println(RearTargetPower);
-
-
-                /*Serial.print("Pre-adjustment values are : ");
-                  Serial.print(FrontPower);
-                  Serial.print(":");
-                  Serial.print(MidPower);
-                  Serial.print(":");
-                  Serial.println(RearPower);
-                 */
+                if (DEBUG) {
+                        Serial.print("Targets are : ");
+                        Serial.print(FrontTargetPower);
+                        Serial.print(":");
+                        Serial.print(MidTargetPower);
+                        Serial.print(":");
+                        Serial.println(RearTargetPower);
+                }
 
                 // FIXME - this will decrement and then increment. Needs a way to skip it
                 if (FrontPower > FrontTargetPower) { 
@@ -231,13 +242,14 @@ void loop() {
                         if (RearPower > RearTargetPower) { RearPower = RearTargetPower;}
                 }
 
-                Serial.print("Post-adjustment values are : ");
-                Serial.print(FrontPower);
-                Serial.print(":");                              
-                Serial.print(MidPower);
-                Serial.print(":");                                                                              
-                Serial.println(RearPower);
-
+                if (DEBUG) {
+                        Serial.print("Post-adjustment values are : ");
+                        Serial.print(FrontPower);
+                        Serial.print(":");                              
+                        Serial.print(MidPower);
+                        Serial.print(":");                                                                              
+                        Serial.println(RearPower);
+                }
 
                 int val = 100;
                 rf12_easyPoll();
@@ -250,24 +262,6 @@ void loop() {
                 if (DEBUG) {Serial.println("Constant state"); }
         }
 
-
-        if (buttonState == 1) {
-                // What do we do when the button is pressed?
-                // It doesn't matter what we're doing. The target values should be set back to 255
-                dimming = 1;
-                storedMillis = 0;
-                elapsedMillis = 0;
-                // Set the target values
-                FrontTargetPower = 255;
-                MidTargetPower = 255;
-                RearTargetPower = 255;
-                // Set the initial values (cos we can't multiply 0 by anything...)
-                if (!FrontPower && !MidPower && !RearPower) {
-                        FrontPower = 1;
-                        MidPower = 1;
-                        RearPower = 1;
-                }
-        }
 
         if (DEBUG) { Serial.print("Dimming : "); Serial.println(0 + dimming); }
         /* Serial.print(FrontPower);
