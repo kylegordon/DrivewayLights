@@ -26,11 +26,13 @@ http://lodge.glasgownet.com
 
 #include <Ports.h>
 #include <RF12.h>
+#include <PortsLCD.h>
 
 // has to be defined because we're using the watchdog for low-power waiting
 ISR(WDT_vect) { Sleepy::watchdogEvent(); }
 
-boolean DEBUG = 0;
+boolean SERIALDEBUG = 0;
+boolean LCDDEBUG = 1;
 int loopdelay = 0;
 
 // set pin numbers:
@@ -64,7 +66,7 @@ int offtimeout = 10000;    // Number of milliseconds to stay on for after being 
 
 PortI2C myBus (1);
 DimmerPlug dimmer (myBus, 0x40);
-
+LiquidCrystalI2C lcd (myBus);
 
 static void setall(byte reg, byte a1, byte a2, byte a3) {
         dimmer.send();
@@ -104,11 +106,12 @@ void easteregg() {
                 dimmer.setReg(DimmerPlug::PWM0, 0);
                 delay(200);
         }
+        lcd.clear();
 }
 
 void setup() {
 
-        if (DEBUG) {	     // If we want to see the pin values for debugging...
+        if (SERIALDEBUG) {	     // If we want to see the pin values for debugging...
                 Serial.begin(57600);  // ...set up the serial ouput on 0004 style
                 Serial.println("\n[DriveWayLights]");
         }
@@ -122,6 +125,10 @@ void setup() {
 
         // Set up the easy transmission mechanism
         rf12_easyInit(0);
+        lcd.begin(20, 4);
+        // Print a message to the LCD.
+        lcd.setCursor(0,0);
+        lcd.print("Initializing");
 
         pinMode(buttonPin, INPUT);    // declare pushbutton as input
 
@@ -143,7 +150,7 @@ void loop() {
         unsigned long currentMillis = millis(); 		// Grab the current time
         buttonState = digitalRead(buttonPin);
         // buttonState = 1;
-        if (DEBUG) { Serial.print("Button : "); Serial.println(0 + buttonState);}
+        if (SERIALDEBUG) { Serial.print("Button : "); Serial.println(0 + buttonState);}
         if (buttonState == 1) {
                 // What do we do when the button is pressed?
                 // It doesn't matter what we're doing. The target values should be set back to 255
@@ -173,9 +180,9 @@ void loop() {
                 if (timestored == 0) {
                         timestored = 1;
                         storedMillis = currentMillis;
-                        if (DEBUG) { Serial.print("Storing time : "); Serial.println(currentMillis); }
+                        if (SERIALDEBUG) { Serial.print("Storing time : "); Serial.println(currentMillis); }
                 }
-                if (timestored == 1) {
+                if (timestored == 1 && buttonState == 0) {
                         elapsedMillis = currentMillis - storedMillis;
                         // When we reach the timeout, start turning off
                         if (elapsedMillis > offtimeout) { 
@@ -184,7 +191,7 @@ void loop() {
                                 MidTargetPower = 0;
                                 RearTargetPower = 0;
                         }
-                        if (DEBUG) { Serial.print("Static elapsed time : "); Serial.println(elapsedMillis); }
+                        if (SERIALDEBUG) { Serial.print("Static elapsed time : "); Serial.println(elapsedMillis); }
                 }
 
         } else {
@@ -199,22 +206,32 @@ void loop() {
                 if (timestored == 0) {
                         timestored = 1;
                         storedMillis = currentMillis;
-                        if (DEBUG) { Serial.print("Storing time : "); Serial.println(currentMillis); }
+                        if (SERIALDEBUG) { Serial.print("Storing time : "); Serial.println(currentMillis); }
                 }
                 if (timestored == 1) {
                         elapsedMillis = currentMillis - storedMillis;
-                        if (DEBUG) { Serial.print("Dimming elapsed time : "); Serial.println(elapsedMillis); }
+                        if (SERIALDEBUG) { Serial.print("Dimming elapsed time : "); Serial.println(elapsedMillis); }
                 }
 
                 dimming = 1;
-                if (DEBUG) {
-                        Serial.print("Targets are : ");
+                if (SERIALDEBUG) {
+                        Serial.print("Pre: ");
                         Serial.print(FrontTargetPower);
                         Serial.print(":");
                         Serial.print(MidTargetPower);
                         Serial.print(":");
                         Serial.println(RearTargetPower);
                 }
+                if (LCDDEBUG) {
+                        lcd.setCursor(0,1);
+                        lcd.print("Pre:");
+                        lcd.print(int(FrontPower));
+                        lcd.print(":");
+                        lcd.print(int(MidPower));
+                        lcd.print(":");
+                        lcd.print(int(RearPower));
+                }
+
 
                 // FIXME - this will decrement and then increment. Needs a way to skip it
                 if (FrontPower > FrontTargetPower) { 
@@ -242,7 +259,7 @@ void loop() {
                         if (RearPower > RearTargetPower) { RearPower = RearTargetPower;}
                 }
 
-                if (DEBUG) {
+                if (SERIALDEBUG) {
                         Serial.print("Post-adjustment values are : ");
                         Serial.print(FrontPower);
                         Serial.print(":");                              
@@ -250,6 +267,16 @@ void loop() {
                         Serial.print(":");                                                                              
                         Serial.println(RearPower);
                 }
+                if (LCDDEBUG) {
+                        lcd.setCursor(0,2);
+                        lcd.print("Post:");
+                        lcd.print(int(FrontPower));
+                        lcd.print(":");
+                        lcd.print(int(MidPower));
+                        lcd.print(":");
+                        lcd.print(int(RearPower));
+                }
+
 
                 int val = 100;
                 rf12_easyPoll();
@@ -259,11 +286,11 @@ void loop() {
         } else {
                 // We appear to have reached our targets. we no longer need to ramp
                 dimming = false;
-                if (DEBUG) {Serial.println("Constant state"); }
+                if (SERIALDEBUG) {Serial.println("Constant state"); }
         }
 
 
-        if (DEBUG) { Serial.print("Dimming : "); Serial.println(0 + dimming); }
+        if (SERIALDEBUG) { Serial.print("Dimming : "); Serial.println(0 + dimming); }
         /* Serial.print(FrontPower);
            Serial.print(":");
            Serial.print(MidPower);
