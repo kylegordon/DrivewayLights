@@ -32,7 +32,7 @@ http://lodge.glasgownet.com
 ISR(WDT_vect) { Sleepy::watchdogEvent(); }
 
 boolean SERIALDEBUG = 0;
-boolean LCDDEBUG = 1;
+boolean LCDDEBUG = 0;
 int loopdelay = 0;
 
 // set pin numbers:
