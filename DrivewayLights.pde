@@ -26,24 +26,22 @@ http://lodge.glasgownet.com
 
 #include <Ports.h>
 #include <RF12.h>
-#include <PortsLCD.h>
 
 // has to be defined because we're using the watchdog for low-power waiting
 ISR(WDT_vect) { Sleepy::watchdogEvent(); }
 
 boolean SERIALDEBUG = 0;
-boolean LCDDEBUG = 0;
 int loopdelay = 0;
 
 // set pin numbers:
-int buttonPin = 6;   // choose the input pin (for a pushbutton)
+int FrontButtonPin = 6;   // choose the input pin (for a pushbutton)
 
 long previousMillis = 0;	  // last update time
 long elapsedMillis = 0;	   // elapsed time
 long storedMillis = 0;
 
 boolean timestored = 0;
-boolean buttonState = 0;	// variable for reading the pushbutton status
+boolean FrontButtonState = 0;	// variable for reading the pushbutton status
 boolean dimming = false;
 
 // Initial target power states
@@ -66,7 +64,6 @@ int offtimeout = 10000;    // Number of milliseconds to stay on for after being 
 
 PortI2C myBus (1);
 DimmerPlug dimmer (myBus, 0x40);
-LiquidCrystalI2C lcd (myBus);
 
 static void setall(byte reg, byte a1, byte a2, byte a3) {
         dimmer.send();
@@ -106,7 +103,6 @@ void easteregg() {
                 dimmer.setReg(DimmerPlug::PWM0, 0);
                 delay(200);
         }
-        lcd.clear();
 }
 
 void setup() {
@@ -121,16 +117,23 @@ void setup() {
 
         // This calls rf12_initialize() with settings obtained from EEPROM address 0x20 .. 0x3F.
         // These settings can be filled in by the RF12demo sketch in the RF12 library
-        rf12_config();
+        // rf12_config();
+
+	/* You should scrap all this and wrap it inside the RF12Demo sketch
+        if (rf12_config()) {
+          config.nodeId = eeprom_read_byte(RF12_EEPROM_ADDR);
+          config.group = eeprom_read_byte(RF12_EEPROM_ADDR + 1);
+        } else {
+          config.nodeId = 0x41; // node A1 @ 433 MHz
+          config.group = 0xD4;
+          saveConfig();
+        }
+	*/
 
         // Set up the easy transmission mechanism
         rf12_easyInit(0);
-        lcd.begin(20, 4);
-        // Print a message to the LCD.
-        lcd.setCursor(0,0);
-        lcd.print("Initializing");
 
-        pinMode(buttonPin, INPUT);    // declare pushbutton as input
+        pinMode(FrontButtonPin, INPUT);    // declare pushbutton as input
 
         //FrontTargetPower = 255;
         //MidTargetPower = 255;
@@ -146,12 +149,13 @@ void setup() {
 
 }
 
-void loop() {
-        unsigned long currentMillis = millis(); 		// Grab the current time
-        buttonState = digitalRead(buttonPin);
-        // buttonState = 1;
-        if (SERIALDEBUG) { Serial.print("Button : "); Serial.println(0 + buttonState);}
-        if (buttonState == 1) {
+void checkfrontbutton() {
+	// Check the state of the front button and respond if pressed
+
+        FrontButtonState = digitalRead(FrontButtonPin);
+        if (SERIALDEBUG) { Serial.print("Button : "); Serial.println(0 + FrontButtonState);}
+
+        if (FrontButtonState == 1) {
                 // What do we do when the button is pressed?
                 // It doesn't matter what we're doing. The target values should be set back to 255
                 dimming = 1;
@@ -168,7 +172,18 @@ void loop() {
                         RearPower = 1;
                 }
         }
+}
 
+void checkrearbutton() {
+	// Check the state of the rear button
+}
+
+
+void loop() {
+        unsigned long currentMillis = millis(); 		// Grab the current time
+
+	// Check the front button/PIR
+	checkfrontbutton();
 
         // 'dimming' is when we're ramping up or down
 
@@ -182,7 +197,7 @@ void loop() {
                         storedMillis = currentMillis;
                         if (SERIALDEBUG) { Serial.print("Storing time : "); Serial.println(currentMillis); }
                 }
-                if (timestored == 1 && buttonState == 0) {
+                if (timestored == 1 && FrontButtonState == 0) {
                         elapsedMillis = currentMillis - storedMillis;
                         // When we reach the timeout, start turning off
                         if (elapsedMillis > offtimeout) { 
@@ -191,11 +206,18 @@ void loop() {
                                 MidTargetPower = 0;
                                 RearTargetPower = 0;
                         }
-                        if (SERIALDEBUG) { Serial.print("Static elapsed time : "); Serial.println(elapsedMillis); }
+                        if (SERIALDEBUG) { Serial.print("Static state elapsed time : "); Serial.println(elapsedMillis); }
+                }
+                if (timestored == 1 && FrontButtonState == 1) {
+                        // FIXME Start the timeout and dimming process
+                        FrontTargetPower = 0;
+                        MidTargetPower = 0;
+                        RearTargetPower = 0;
                 }
 
         } else {
                 // Everything is fine
+                // FIXME Resetting the counter by accident here when the levels are correct but the switch is off.
                 timestored = 0;
                 storedMillis = 0;
                 elapsedMillis = 0;
@@ -210,7 +232,7 @@ void loop() {
                 }
                 if (timestored == 1) {
                         elapsedMillis = currentMillis - storedMillis;
-                        if (SERIALDEBUG) { Serial.print("Dimming elapsed time : "); Serial.println(elapsedMillis); }
+                        if (SERIALDEBUG) { Serial.print("Dimming state elapsed time : "); Serial.println(elapsedMillis); }
                 }
 
                 dimming = 1;
@@ -222,16 +244,6 @@ void loop() {
                         Serial.print(":");
                         Serial.println(RearTargetPower);
                 }
-                if (LCDDEBUG) {
-                        lcd.setCursor(0,1);
-                        lcd.print("Pre:");
-                        lcd.print(int(FrontPower));
-                        lcd.print(":");
-                        lcd.print(int(MidPower));
-                        lcd.print(":");
-                        lcd.print(int(RearPower));
-                }
-
 
                 // FIXME - this will decrement and then increment. Needs a way to skip it
                 if (FrontPower > FrontTargetPower) { 
@@ -267,16 +279,6 @@ void loop() {
                         Serial.print(":");                                                                              
                         Serial.println(RearPower);
                 }
-                if (LCDDEBUG) {
-                        lcd.setCursor(0,2);
-                        lcd.print("Post:");
-                        lcd.print(int(FrontPower));
-                        lcd.print(":");
-                        lcd.print(int(MidPower));
-                        lcd.print(":");
-                        lcd.print(int(RearPower));
-                }
-
 
                 int val = 100;
                 rf12_easyPoll();
