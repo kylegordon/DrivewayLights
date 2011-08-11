@@ -178,6 +178,9 @@ void checkrearbutton() {
 	// Check the state of the rear button
 }
 
+void checktemperature() {
+	// Check and return the temperature from the one-wire sensor
+}
 
 void loop() {
         unsigned long currentMillis = millis(); 		// Grab the current time
