@@ -149,12 +149,19 @@ void setup() {
 
 }
 
-void checkfrontbutton() {
+int checkbuttons() {
 	// Check the state of the front button and respond if pressed
 
         FrontButtonState = digitalRead(FrontButtonPin);
-        if (SERIALDEBUG) { Serial.print("Button : "); Serial.println(0 + FrontButtonState);}
+        if (SERIALDEBUG) { Serial.print("Front button : "); Serial.println(0 + FrontButtonState);}
+        RearButtonState = digitalRead(RearButtonPin);
+        if (SERIALDEBUG) { Serial.print("Rear button : "); Serial.println(0 + RearButtonState);}
 
+	return 
+}
+
+void actionbuttons() {
+	// Decide what to do based on what buttons are pressed
         if (FrontButtonState == 1) {
                 // What do we do when the button is pressed?
                 // It doesn't matter what we're doing. The target values should be set back to 255
@@ -174,19 +181,21 @@ void checkfrontbutton() {
         }
 }
 
-void checkrearbutton() {
-	// Check the state of the rear button
-}
-
 void checktemperature() {
 	// Check and return the temperature from the one-wire sensor
+	int temperature = 42;
+	
+        if (SERIALDEBUG) { Serial.print("Temperature : "); Serial.println(0 + temperature);}
 }
 
 void loop() {
         unsigned long currentMillis = millis(); 		// Grab the current time
 
-	// Check the front button/PIR
-	checkfrontbutton();
+	// Check the button/PIR states
+	checkbuttons();
+
+	// Make some decisions (set power levels, ramp order, etc)
+	actionbuttons();
 
         // 'dimming' is when we're ramping up or down
 
