@@ -34,14 +34,16 @@ boolean SERIALDEBUG = 0;
 int loopdelay = 0;
 
 // set pin numbers:
-int FrontButtonPin = 6;   // choose the input pin (for a pushbutton)
+int FrontButtonPin = 6;   // Digital input pin 6
+int RearButtonPin = 7; // Digital input pin 7
 
 long previousMillis = 0;	  // last update time
 long elapsedMillis = 0;	   // elapsed time
 long storedMillis = 0;
 
 boolean timestored = 0;
-boolean FrontButtonState = 0;	// variable for reading the pushbutton status
+boolean FrontButtonState = 0;	// Front button state
+boolean RearButtonState = 0; // Rear button state
 boolean dimming = false;
 
 // Initial target power states
@@ -75,6 +77,8 @@ static void setall(byte reg, byte a1, byte a2, byte a3) {
 }
 
 void easteregg() {
+
+        if (SERIALDEBUG) { Serial.println("Running easter egg");}
 
         int count;
 
@@ -149,15 +153,13 @@ void setup() {
 
 }
 
-int checkbuttons() {
-	// Check the state of the front button and respond if pressed
+void checkbuttons() {
+        // Check the state of the front button and respond if pressed
 
         FrontButtonState = digitalRead(FrontButtonPin);
         if (SERIALDEBUG) { Serial.print("Front button : "); Serial.println(0 + FrontButtonState);}
         RearButtonState = digitalRead(RearButtonPin);
         if (SERIALDEBUG) { Serial.print("Rear button : "); Serial.println(0 + RearButtonState);}
-
-	return 
 }
 
 void actionbuttons() {
