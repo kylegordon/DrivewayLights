@@ -34,8 +34,8 @@ boolean SERIALDEBUG = 0;
 int loopdelay = 0;
 
 // set pin numbers:
-int FrontButtonPin = 6;   // Digital input pin 6
-int RearButtonPin = 7; // Digital input pin 7
+int FrontButtonPin = 7;   // Digital input pin 6
+int RearButtonPin = 4; // Digital input pin 7
 
 long previousMillis = 0;	  // last update time
 long elapsedMillis = 0;	   // elapsed time
@@ -64,7 +64,7 @@ float RearDecrement = 1.03;
 
 int offtimeout = 10000;    // Number of milliseconds to stay on for after being turned on
 
-PortI2C myBus (1);
+PortI2C myBus (3);
 DimmerPlug dimmer (myBus, 0x40);
 
 static void setall(byte reg, byte a1, byte a2, byte a3) {
