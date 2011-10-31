@@ -62,7 +62,7 @@ float FrontDecrement = 1.015;
 float MidDecrement = 1.02;
 float RearDecrement = 1.03;
 
-int offtimeout = 10000;    // Number of milliseconds to stay on for after being turned on
+int offtimeout = 240000;    // Number of milliseconds to stay on for after being turned on
 
 PortI2C myBus (3);
 DimmerPlug dimmer (myBus, 0x40);
@@ -150,6 +150,17 @@ void setup() {
         setall(DimmerPlug::LEDOUT0, ~0, ~0, ~0);    // all LEDs group-dimmable
 
         easteregg();
+
+        dimmer.setReg(DimmerPlug::PWM0, 255);
+        dimmer.setReg(DimmerPlug::PWM1, 255);
+        dimmer.setReg(DimmerPlug::PWM2, 255);
+
+        delay(10000);
+
+        dimmer.setReg(DimmerPlug::PWM0, 0);
+        dimmer.setReg(DimmerPlug::PWM1, 0);
+        dimmer.setReg(DimmerPlug::PWM2, 0);
+
 
 }
 
