@@ -109,6 +109,30 @@ void easteregg() {
         }
 }
 
+void startupflash() {
+
+        if (SERIALDEBUG) { Serial.println("Starting up");}
+
+        int count;
+
+        for (count=0; count <=2; count++){
+          dimmer.setReg(DimmerPlug::PWM0, 255);
+          dimmer.setReg(DimmerPlug::PWM1, 255);
+          dimmer.setReg(DimmerPlug::PWM2, 255);
+          delay(200);
+          dimmer.setReg(DimmerPlug::PWM0, 0);
+          dimmer.setReg(DimmerPlug::PWM1, 0);
+          dimmer.setReg(DimmerPlug::PWM2, 0);
+          delay(200);
+        }
+
+  dimmer.setReg(DimmerPlug::PWM2, 255);
+  delay(200);
+  dimmer.setReg(DimmerPlug::PWM2, 0);
+  delay(10000);
+
+}
+
 void setup() {
 
         if (SERIALDEBUG) {	     // If we want to see the pin values for debugging...
@@ -149,7 +173,7 @@ void setup() {
         dimmer.setReg(DimmerPlug::GRPPWM, 0xFF);    // max brightness
         setall(DimmerPlug::LEDOUT0, ~0, ~0, ~0);    // all LEDs group-dimmable
 
-        easteregg();
+        startupflash();
 
         dimmer.setReg(DimmerPlug::PWM0, 255);
         dimmer.setReg(DimmerPlug::PWM1, 255);
