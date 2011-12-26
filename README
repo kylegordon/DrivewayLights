@@ -5,5 +5,5 @@ This uses JeeNode ID2, and a Dimmer plug. The dimmer plug is connected to a seri
 
 Port 1 - Unused (but potentially used for digital input 4 as the rear light switch or something else)
 Port 2 - Defective due to burnt out digital pin 5
-Port 3 - Dimmer plug - overhangs defective Port 1
+Port 3 - Dimmer plug - overhangs defective Port 2
 Port 4 - Used for digital input 7 for the front light switch
