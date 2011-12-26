@@ -1,3 +1,9 @@
-06/04/11 - The code is mostly complete, and all the parts have been purchased. It didn't crash when being tested without lights and on a bench power supply. This may be due to a bug being fixed, or the power supply being more stable. Further testing is required with the lights hooked up.
+06/04/11 -	The code is mostly complete, and all the parts have been purchased. 
+				It didn't crash when being tested without lights and on a bench power supply. 
+				This may be due to a bug being fixed, or the power supply being more stable. 
+				Further testing is required with the lights hooked up.
 
-24/09/11 - It all seems to work. Installation in progress
+24/09/11 -	It all seems to work. Installation in progress
+
+26/12/11 -	It's all crap. On first press of the button the lights all dim breifly and then it all locks up. 
+				It all works fine on the bench though :-/
