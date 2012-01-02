@@ -7,3 +7,18 @@ Port 1 - Unused (but potentially used for digital input 4 as the rear light swit
 Port 2 - Defective due to burnt out digital pin 5
 Port 3 - Dimmer plug - overhangs defective Port 2
 Port 4 - Used for digital input 7 for the front light switch
+
+2N7000 MOSFETS - one per channel. Common positive on the bottom screw terminal
+
+WIRING
+======
+
+Front Cable
+-----------
+Blue + Blue/White = Front LED
+Green + Green/White = Front Switch
+
+Rear Cable
+----------
+Blue + Blue/White = Middle LED
+Green + Green/White = Rear LED
