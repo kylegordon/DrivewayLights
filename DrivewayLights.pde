@@ -30,8 +30,7 @@ http://lodge.glasgownet.com
 // has to be defined because we're using the watchdog for low-power waiting
 ISR(WDT_vect) { Sleepy::watchdogEvent(); }
 
-boolean SERIALDEBUG = 1;
-int loopdelay = 0;
+boolean SERIALDEBUG = 0;
 
 // set pin numbers:
 int FrontButtonPin = 7;   // Digital input pin 6
@@ -39,7 +38,7 @@ int RearButtonPin = 4; // Digital input pin 7
 
 long previousMillis = 0;	  // last update time
 long elapsedMillis = 0;	   // elapsed time
-long storedMillis = 0;
+long storedMillis = 5;
 
 boolean timestored = 0;
 boolean FrontButtonState = 0;	// Front button state
@@ -50,19 +49,23 @@ boolean dimming = false;
 int FrontTargetPower = 0;
 int MidTargetPower = 0;
 int RearTargetPower = 0;
+int in = 0;
 
 float FrontPower = 0;
+float old_FrontPower = 0;
 float MidPower = 0;
 float RearPower = 0;
 
 float FrontIncrement = 1.02;
+//float FrontIncrement = 0.02;
 float MidIncrement = 1.015;
 float RearIncrement = 1.01;
 float FrontDecrement = 1.015;
 float MidDecrement = 1.02;
 float RearDecrement = 1.03;
 
-int offtimeout = 240000;    // Number of milliseconds to stay on for after being turned on
+// long offtimeout = 240000;		// Number of milliseconds to stay on for after being turned on
+long offtimeout = 300000;		// 60 seconds
 
 PortI2C myBus (3);
 DimmerPlug dimmer (myBus, 0x40);
@@ -115,7 +118,7 @@ void startupflash() {
 
 	 int count;
 
-	 for (count=0; count <=2; count++){
+	 for (count=0; count <=1; count++){
 		  dimmer.setReg(DimmerPlug::PWM0, 255);
 		  dimmer.setReg(DimmerPlug::PWM1, 255);
 		  dimmer.setReg(DimmerPlug::PWM2, 255);
@@ -126,19 +129,19 @@ void startupflash() {
 		  delay(200);
 	 }
 
-	 dimmer.setReg(DimmerPlug::PWM2, 255);
-	 delay(200);
-	 dimmer.setReg(DimmerPlug::PWM2, 0);
-	 delay(10000);
+	 //dimmer.setReg(DimmerPlug::PWM2, 255);
+	 //delay(200);
+	 //dimmer.setReg(DimmerPlug::PWM2, 0);
+	 //delay(10000);
 
 }
 
 void setup() {
 
-	 if (SERIALDEBUG) {	     // If we want to see the pin values for debugging...
+	 //if (SERIALDEBUG) {	     // If we want to see the pin values for debugging...
 		  Serial.begin(57600);  // ...set up the serial ouput on 0004 style
 		  Serial.println("\n[DriveWayLights]");
-	 }
+	 //}
 
 	 // Initialize the RF12 module. Node ID 30, 868MHZ, Network group 5
 	 // rf12_initialize(30, RF12_868MHZ, 5);
@@ -197,27 +200,6 @@ void checkbuttons() {
 	 if (SERIALDEBUG) { Serial.print(", Rear button : "); Serial.println(0 + RearButtonState);}
 }
 
-void actionbuttons() {
-	 // Decide what to do based on what buttons are pressed
-	 if (FrontButtonState == 1) {
-		  // What do we do when the button is pressed?
-		  // It doesn't matter what we're doing. The target values should be set back to 255
-		  dimming = 1;
-		  storedMillis = 0;
-		  elapsedMillis = 0;
-		  // Set the target values
-		  FrontTargetPower = 255;
-		  MidTargetPower = 255;
-		  RearTargetPower = 255;
-		  // Set the initial values (cos we can't multiply 0 by anything...)
-		  if (!FrontPower && !MidPower && !RearPower) {
-				FrontPower = 1;
-				MidPower = 1;
-				RearPower = 1;
-		  }
-	 }
-}
-
 void checktemperature() {
 	 // Check and return the temperature from the one-wire sensor
 	 int temperature = 42;
@@ -226,54 +208,91 @@ void checktemperature() {
 }
 
 void loop() {
+	 if (SERIALDEBUG) { Serial.println("----------------"); }
 	 unsigned long currentMillis = millis(); 		// Grab the current time
 
 	 // Check the button/PIR states
 	 checkbuttons();
 
-	 // Make some decisions (set power levels, ramp order, etc)
-	 actionbuttons();
+    // Decide what to do based on what buttons are pressed
+    if (FrontButtonState == 1) {
+        // What do we do when the button is pressed?
+        // It doesn't matter what we're doing. The target values should be set back to 255
+        dimming = 1;
+        // storedMillis = 0;
+        storedMillis = currentMillis;
+        elapsedMillis = 0;
+        // Set the target values
+        FrontTargetPower = 255;
+        MidTargetPower = 255;
+        RearTargetPower = 255;
+        // Set the initial values (cos we can't multiply 0 by anything...)
+        if (!FrontPower && !MidPower && !RearPower) {
+            FrontPower = 1;
+            MidPower = 1;
+            RearPower = 1;
+        }
+    }
+
 
 	 // 'dimming' is when we're ramping up or down
 
 	 // If all the target values have been reached, start a timer if they're not 0 
 	 // (in order to turn off eventually), or just sit and do nothing
-	 if (FrontPower == FrontTargetPower && MidPower == MidTargetPower && RearPower == RearTargetPower) {
+	 if ((FrontPower == FrontTargetPower && MidPower == MidTargetPower && RearPower == RearTargetPower) && (FrontButtonState == 0 && RearButtonState == 0)) {
 		  // All lights are at their target values
+		  dimming = 0;
 		  // Start the count down
-		  if (timestored == 0) {
-				timestored = 1;
+		  if (timestored == 0 && dimming == 0) {
+				dimming = 0;
+				// timestored = 1;
 				storedMillis = currentMillis;
 				if (SERIALDEBUG) { Serial.print("Storing time : "); Serial.println(currentMillis); }
+				// delay(1000);
 		  }
-		  if (timestored == 1 && FrontButtonState == 0) {
+		  if (timestored == 1 ) {
 				elapsedMillis = currentMillis - storedMillis;
+				if (SERIALDEBUG) { Serial.print("offtimeout  : "); Serial.println(offtimeout); }
+				if (SERIALDEBUG) { Serial.print("Stored      : "); Serial.println(storedMillis); }
+				if (SERIALDEBUG) { Serial.print("Current     : "); Serial.println(currentMillis); }
+				if (SERIALDEBUG) { Serial.print("Elapsed     : "); Serial.println(elapsedMillis); }
 				// When we reach the timeout, start turning off
 				if (elapsedMillis > offtimeout) { 
-					 dimming = 1;
+					 if (SERIALDEBUG) { Serial.println("Time to turn off."); }
+					 // delay(10000);
+					 //dimming = 1;
+					 // in = 0;
+					 timestored = 0;
+
 					 FrontTargetPower = 0;
 					 MidTargetPower = 0;
 					 RearTargetPower = 0;
 				}
-				if (SERIALDEBUG) { Serial.print("Static state elapsed time : "); Serial.println(elapsedMillis); }
 		  }
 		  if (timestored == 1 && FrontButtonState == 1 && dimming != 1) {
 				// FIXME Start the timeout and dimming process
 				FrontTargetPower = 0;
 				MidTargetPower = 0;
 				RearTargetPower = 0;
+				if (SERIALDEBUG) { Serial.println("Superfluous?"); }
+				delay(10000);
 		  }
 
-	 } else {
+	 //} else {
 		  // Everything is fine
 		  // FIXME Resetting the counter by accident here when the levels are correct but the switch is off.
-		  timestored = 0;
-		  storedMillis = 0;
-		  elapsedMillis = 0;
+		  // if (SERIALDEBUG) { Serial.println("Else what? Resetting?"); }
+		  // delay(10000);
+		  // timestored = 0;
+		  // storedMillis = 0;
+		  // elapsedMillis = 0;
+	 
 	 }
 
 	 // If we're not at our defined levels, do somethign about it.
 	 if (FrontPower != FrontTargetPower || MidPower != MidTargetPower || RearPower != RearTargetPower) {
+		  // We're dimming, as the targets haven't been met
+		  dimming = 1;
 		  if (timestored == 0 && (FrontButtonState == 1 || RearButtonState == 1)) {
 				timestored = 1;
 				storedMillis = currentMillis;
@@ -284,7 +303,6 @@ void loop() {
 				if (SERIALDEBUG) { Serial.print("Dimming state elapsed time : "); Serial.println(elapsedMillis); }
 		  }
 
-		  dimming = 1;
 		  if (SERIALDEBUG) {
 				Serial.print("Pre: ");
 				Serial.print(FrontTargetPower);
@@ -294,12 +312,17 @@ void loop() {
 				Serial.println(RearTargetPower);
 		  }
 
+        // 23:43 < gordonjcp> something like v=(old_v*rate) + (in*(1-rate)); old_v = v
+		  // FrontPower = (old_FrontPower * FrontIncrement) + (in*(1-FrontIncrement)); old_FrontPower = FrontPower;
+
+		  // If the dim sequence is reset whilst one or two is off, they'll try to climb again but be multiplying against 0
 		  // FIXME - this will decrement and then increment. Needs a way to skip it
 		  if (FrontPower > FrontTargetPower) { 
 				FrontPower = FrontPower / FrontDecrement;                                         // Decrement value
 				if (FrontPower < FrontTargetPower || FrontPower < 1) { FrontPower = FrontTargetPower;}   // Fix overshoot
 		  }
 		  if (FrontPower < FrontTargetPower) { 
+            if (FrontPower == 0) { FrontPower = 1;} //Stop any intermediate dim cycles trying to multiply by 0
 				FrontPower = FrontPower * FrontIncrement;                                         // Increment value
 				if (FrontPower > FrontTargetPower) { FrontPower = FrontTargetPower;}    // Fix overshoot
 		  }
@@ -308,6 +331,7 @@ void loop() {
 				if (MidPower < MidTargetPower || MidPower < 1) { MidPower = MidTargetPower;}
 		  }
 		  if (MidPower < MidTargetPower) { 
+            if (MidPower == 0) { MidPower = 1;} // Stop any intermediate dim cycles trying to multiply by 0
 				MidPower = MidPower * MidIncrement;
 				if (MidPower > MidTargetPower) { MidPower = MidTargetPower;}
 		  }
@@ -316,6 +340,7 @@ void loop() {
 				if (RearPower < RearTargetPower || RearPower < 1) { RearPower = RearTargetPower;}
 		  }
 		  if (RearPower < RearTargetPower) { 
+				if (RearPower == 0) { RearPower = 1;} // Stop any intermediate dim cycles trying to multiply by 0
 				RearPower = RearPower * RearIncrement;
 				if (RearPower > RearTargetPower) { RearPower = RearTargetPower;}
 		  }
@@ -334,11 +359,13 @@ void loop() {
 		  rf12_easySend(&val, sizeof val);
 		  rf12_easyPoll();
 
-	 } else {
+	 } else if (FrontPower != FrontTargetPower || MidPower != MidTargetPower || RearPower != RearTargetPower) {
 		  // We appear to have reached our targets. we no longer need to ramp
-		  dimming = 0;
-		  if (SERIALDEBUG) {Serial.println("Constant state"); }
+		  // dimming = 1;
+		  // if (SERIALDEBUG) {Serial.println("Constant state"); }
+		  // if (SERIALDEBUG) {Serial.println("Not arrived yet!"); }
 	 }
+
 
 
 	 if (SERIALDEBUG) { Serial.print("Dimming : "); Serial.print(0 + dimming); }
@@ -354,13 +381,18 @@ void loop() {
 	 dimmer.setReg(DimmerPlug::PWM1, (int)MidPower);
 	 dimmer.setReg(DimmerPlug::PWM2, (int)RearPower);
 
+	 /*if (FrontPower != FrontTargetPower || MidPower != MidTargetPower || RearPower != RearTargetPower) {
+		  FrontPower = 1;
+		  MidPower = 1;
+		  RearPower = 1;
+	 }*/
+
+
 	 // treat each group of 4 LEDS as RGBW combinations
 	 //set4(DimmerPlug::PWM0, w, b, g, r);
 	 //set4(DimmerPlug::PWM1, w, b, g, r);
 	 //set4(DimmerPlug::PWM2, w, b, g, r);
 	 //set4(DimmerPlug::PWM12, w, b, g, r);
-
-	 delay(loopdelay);
 
 }
 
