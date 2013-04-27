@@ -3,14 +3,8 @@ compiler:
   - gcc
 before_script:
   - sudo apt-get install gcc-avr avr-libc libelf-dev pkg-config freeglut3 freeglut3-dev scons
-  - mkdir -p build
-  - cd build
-  - git clone git://github.com/kylegordon/DrivewayLights.git
-  - pwd
   - wget -O "arduino.tar.gz" "http://arduino.googlecode.com/files/arduino-1.0.3-linux32.tgz"
   - tar xzf arduino.tar.gz
-  - export ARDUINO_HOME="$(pwd)/arduino-1.0.3"
-  - cd ../
   - pwd
   - echo "Done before_script"
-script: scons
+script: scons ARDUINO_HOME="$(pwd)/arduino-1.0.3"
