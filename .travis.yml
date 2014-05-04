@@ -2,8 +2,13 @@ language: c
 compiler:
   - gcc
 before_script:
+    mkdir $(pwd)/tmp/
   - sudo apt-get install gcc-avr avr-libc libelf-dev pkg-config freeglut3 freeglut3-dev scons
   - wget -O "arduino.tar.gz" "http://arduino.googlecode.com/files/arduino-1.0.5-linux64.tgz"
   - tar xzf arduino.tar.gz
   - git clone git://github.com/jcw/jeelib.git $(pwd)/arduino-1.0.5/libraries/jeelib/
+    git clone https://github.com/adafruit/Adafruit_CC3000_Library $(pwd)/arduino-1.0.5/libraries/Adafruit_CC3000_Library/
+    git clone https://github.com/nathanchantrell/pubsubclient/ $(pwd)/tmp/
+    mv $(pwd)/tmp/pubsubclient/cc3000_PubSubClient $(pwd)/arduino-1.0.5/libraries/cc3000_PubSubClient
+    git clone https://github.com/adafruit/CC3000_MDNS $(pwd)/arduino-1.0.5/libraries/CC3000_MDNS
 script: scons ARDUINO_HOME="$(pwd)/arduino-1.0.5"
