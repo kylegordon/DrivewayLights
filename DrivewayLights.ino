@@ -7,6 +7,7 @@
 #include <ccspi.h>
 #include <SPI.h>
 #include <cc3000_PubSubClient.h>
+#include <string.h>
 
 #define SERIALDEBUG = 1;
 
@@ -20,8 +21,8 @@
 
 Adafruit_CC3000 cc3000 = Adafruit_CC3000(ADAFRUIT_CC3000_CS, ADAFRUIT_CC3000_IRQ, ADAFRUIT_CC3000_VBAT, SPI_CLOCK_DIVIDER);
 
-#define WLAN_SSID       "XXXXXXXX"        // cannot be longer than 32 characters!
-#define WLAN_PASS       "XXXXXXXX"
+#define WLAN_SSID       "XXXXXXXXXX"        // cannot be longer than 32 characters!
+#define WLAN_PASS       "XXXXXXXXXX"
 
 // Security can be WLAN_SEC_UNSEC, WLAN_SEC_WEP, WLAN_SEC_WPA or WLAN_SEC_WPA2
 #define WLAN_SECURITY   WLAN_SEC_WPA2
@@ -31,6 +32,11 @@ Adafruit_CC3000_Client client;
 // set pin numbers:
 int FrontButtonPin = 7;   // Digital input pin 6
 int RearButtonPin = 4; // Digital input pin 7
+
+int FrontPWMOutPin = 9;
+int MidPWMOutPin = 10;
+int RearPWMOutPin = 11;
+int AuxPWMOutPin = 3;
 
 long previousMillis = 0;      // last update time
 long elapsedMillis = 0;    // elapsed time
@@ -72,25 +78,31 @@ void callback (char* topic, byte* payload, unsigned int length) {
   payload[length] = '\0';
   //String strPayload = String((char*)payload);
   int intPayload = int((char*)payload);
-  if (strTopic.endsWith("1")) {
-      Serial.println("Server's using http version 1.1"); 
-  } 
+  
   // Instead of using endswith, compare the last character of the topic
-  if (topic[length] == '1') {
-      Serial.println("Handling light number 1");
-      FrontTargetPower = intPayload;
+  Serial.print("Topic length is ");
+  Serial.println(strlen(topic));
+  Serial.print("Last character is ");
+  Serial.println(topic[strlen(topic)-1]);
+  if (topic[strlen(topic)-1] == '1') {
+      Serial.println("Setting light number 1 to level ");
+      Serial.println(intPayload);
+      //FrontTargetPower = intPayload;
   }
-  if (topic[length] == '2') {
-      Serial.println("Handling light number 2");
-      MidTargetPower = intPayload;
+  if (topic[strlen(topic)-1] == '2') {
+      Serial.println("Setting light number 2 to level ");
+      Serial.println(intPayload);
+      //MidTargetPower = intPayload;
   }
-  if (topic[length] == '3') {
-      Serial.println("Handling light number 3");
-      RearTargetPower = intPayload;
+  if (topic[strlen(topic)-1] == '3') {
+      Serial.println("Setting light number 3 to level ");
+      Serial.println(intPayload);
+      //RearTargetPower = intPayload;
   }
-  if (topic[length] == '4') {
-      Serial.println("Handling light number 4");
-      AuxTargetPower = intPayload;
+  if (topic[strlen(topic)-1] == '4') {
+      Serial.println("Setting light number 4 to level ");
+      Serial.println(intPayload);
+      //AuxTargetPower = intPayload;
   }
 
 
@@ -276,9 +288,9 @@ void checktemperature() {
      // Check and return the temperature from the one-wire sensor
      int temperature = 42;
 
-     #ifdef SERIALDEBUG
+#ifdef SERIALDEBUG
        Serial.print("Temperature : "); Serial.println(0 + temperature);
-     #endif
+#endif
 }
 
 
@@ -297,6 +309,74 @@ void loop(void) {
     // Send MQTT message to broker
   }
 
+  // If all the channels are at the correct values
+  if (FrontPower == FrontTargetPower && MidPower == MidTargetPower && RearPower == RearTargetPower) {
+    // The lights are at their target values
+    dimming = 0;
+  }
+
+  // If we're not at our defined levels, do somethign about it.
+  if (FrontPower != FrontTargetPower || MidPower != MidTargetPower || RearPower != RearTargetPower) {
+    // We're dimming, as the targets haven't been met
+    dimming = 1;
+ 
+#ifdef SERIALDEBUG
+      Serial.print("Pre: ");
+      Serial.print(FrontTargetPower);
+      Serial.print(":");
+      Serial.print(MidTargetPower);
+      Serial.print(":");
+      Serial.println(RearTargetPower);
+#endif
+
+    // 23:43 < gordonjcp> something like v=(old_v*rate) + (in*(1-rate)); old_v = v
+    // FrontPower = (old_FrontPower * FrontIncrement) + (in*(1-FrontIncrement)); old_FrontPower = FrontPower;
+
+    // If the dim sequence is reset whilst one or two is off, they'll try to climb again but be multiplying against 0
+    // FIXME - this will decrement and then increment. Needs a way to skip it
+    if (FrontPower > FrontTargetPower) { 
+      FrontPower = FrontPower / IncrementRate;                                         // Decrement value
+      if (FrontPower < FrontTargetPower || FrontPower < 1) { FrontPower = FrontTargetPower;}   // Fix overshoot
+    }
+    if (FrontPower < FrontTargetPower) { 
+      if (FrontPower == 0) { FrontPower = 1;} //Stop any intermediate dim cycles trying to multiply by 0
+      FrontPower = FrontPower * IncrementRate;                                         // Increment value
+      if (FrontPower > FrontTargetPower) { FrontPower = FrontTargetPower;}    // Fix overshoot
+    }
+    if (MidPower > MidTargetPower) { 
+            MidPower = MidPower / IncrementRate;
+            if (MidPower < MidTargetPower || MidPower < 1) { MidPower = MidTargetPower;}
+    }
+    if (MidPower < MidTargetPower) { 
+            if (MidPower == 0) { MidPower = 1;} // Stop any intermediate dim cycles trying to multiply by 0
+            MidPower = MidPower * IncrementRate;
+            if (MidPower > MidTargetPower) { MidPower = MidTargetPower;}
+    }
+    if (RearPower > RearTargetPower) { 
+            RearPower = RearPower / IncrementRate;
+            if (RearPower < RearTargetPower || RearPower < 1) { RearPower = RearTargetPower;}
+    }
+    if (RearPower < RearTargetPower) { 
+            if (RearPower == 0) { RearPower = 1;} // Stop any intermediate dim cycles trying to multiply by 0
+            RearPower = RearPower * IncrementRate;
+            if (RearPower > RearTargetPower) { RearPower = RearTargetPower;}
+    }
+
+#ifdef SERIALDEBUG
+      Serial.print("Post : ");
+      Serial.print(FrontPower);
+      Serial.print(":");                              
+      Serial.print(MidPower);
+      Serial.print(":");                                                                              
+      Serial.println(RearPower);
+#endif
+  
+  analogWrite(FrontPWMOutPin, FrontPower);
+  analogWrite(MidPWMOutPin, MidPower);
+  analogWrite(RearPWMOutPin, RearPower);
+  analogWrite(AuxPWMOutPin, AuxPower);
+  
+  }
 
 
 }
