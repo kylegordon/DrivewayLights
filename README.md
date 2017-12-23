@@ -24,3 +24,24 @@ Rear Cable
 ----------
 Blue + Blue/White = Middle LED
 Green + Green/White = Rear LED
+
+
+Rev 2 - Quad MOSFET Board & CC3000 WiFi
+=======================================
+
+1 - Unused
+2 - CC3000 IRQ
+3 - Digital PWM Channel 1
+4 - CC3000 VBEN
+5 - Digital PWM Channel 2
+6 - Digital PWM Channel 3
+7 - Digital input, pulled low
+8 - Digital input, pulled low
+9 - Digital PWM Channel 4
+10 - CC3000 CS
+11 - CC3000 MOSI
+12 - CC3000 MISO
+13 - CC3000 CLK
+RST - Reset button
+Vcc - 5v
+GNS - GND
