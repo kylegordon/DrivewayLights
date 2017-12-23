@@ -6,7 +6,8 @@
 #include <Adafruit_CC3000.h>
 #include <ccspi.h>
 #include <SPI.h>
-#include <cc3000_PubSubClient.h>
+#include <Ethernet.h>
+#include <PubSubClient.h>
 #include <string.h>
 
 // Used by software_reboot
@@ -16,7 +17,7 @@
 
 // These are the interrupt and control pins
 #define ADAFRUIT_CC3000_IRQ   2  // MUST be an interrupt pin!
-// These can be any two pins
+// These can be any two pins. CHECK THE README. DrivewayLights uses 2 & 4
 #define ADAFRUIT_CC3000_VBAT  4
 #define ADAFRUIT_CC3000_CS    10
 // Use hardware SPI for the remaining pins
@@ -119,8 +120,11 @@ void callback (char* topic, byte* payload, unsigned int length) {
 
 }
 
+
 ArrayToIp server = { 13, 32, 24, 172 };
-cc3000_PubSubClient mqttclient(server.ip, 1883, callback, client, cc3000);
+//PubSubClient mqttclient(server.ip, 1883, callback, client, cc3000);
+EthernetClient ethClient;
+PubSubClient mqttclient(ethClient);
 
 /**************************************************************************/
 /*!
